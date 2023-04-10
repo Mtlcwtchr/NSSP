@@ -26,7 +26,7 @@ namespace Model
 
         public void AddBlocker(string blockerId)
         {
-            Inversed.AddBlocker(blockerId);
+            Inversed?.AddBlocker(blockerId);
             _blockers ??= new List<string>();
             if(!_blockers.Contains(blockerId))
             {
@@ -36,7 +36,7 @@ namespace Model
 
         public void ClearBlocker(string blockerId)
         {
-            Inversed.ClearBlocker(blockerId);
+            Inversed?.ClearBlocker(blockerId);
             if (_blockers == null)
             {
                 return;
@@ -49,7 +49,7 @@ namespace Model
 
         public void InvolveInDelivery(SupplyWagon<float> wagon)
         {
-            Inversed.InvolveInDelivery(wagon);
+            Inversed?.InvolveInDelivery(wagon);
             _wagons ??= new List<SupplyWagon<float>>();
             if (!_wagons.Contains(wagon))
             {
@@ -60,7 +60,7 @@ namespace Model
 
         public void ExcludeFromDelivery(SupplyWagon<float> wagon)
         {
-            Inversed.ExcludeFromDelivery(wagon);
+            Inversed?.ExcludeFromDelivery(wagon);
             if (_wagons == null)
             {
                 return;
