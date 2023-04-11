@@ -107,8 +107,8 @@ namespace View
             };
 
             Color priorColor = isPrior ? Color.yellow : Color.clear;
-            
-            SetColor(Color.Lerp(mainColor, Color.Lerp(typeColor, priorColor, 0.5f), 0.5f));
+
+            SetColor(Color.Lerp(Color.Lerp(mainColor,typeColor, 0.5f), priorColor, 0.25f));
         }
 
         public void SetColor(Color color)
