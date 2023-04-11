@@ -1,4 +1,3 @@
-using System;
 using Model;
 using TMPro;
 using UnityEngine;
@@ -26,23 +25,13 @@ namespace View
                 {
                     _model = value;
                     _model.OnWarSideChanged += WarSideChanged;
+                    _model.OnPriorityChanged += PriorityChanged;
+                    _model.Storage.OnSuppliesUpdated += SuppliesUpdated;
                     WarSideChanged(_model.WarSide);
-
-                    switch (_model.CityType)
+                    PriorityChanged(_model.Priority);
+                    foreach (var (key, supplies) in _model.Storage.Supplies)
                     {
-                        case CityType.Consumer:
-                            _model.OnPriorityChanged += PriorityChanged;
-                            _model.Storage.OnSuppliesUpdated += SuppliesUpdated;
-                            PriorityChanged(_model.Priority);
-                            foreach (var (key, supplies) in _model.Storage.Supplies)
-                            {
-                                SuppliesUpdated(key, supplies.Value);
-                            }
-                            break;
-                        case CityType.Supplier:
-                            ammoLabel.text = "ammo: Inf.";
-                            provisionLabel.text = "provision: Inf.";
-                            break;
+                        SuppliesUpdated(key, supplies.Value);
                     }
                 }
             }
@@ -98,7 +87,7 @@ namespace View
                 WarSide.Enemy => Color.red,
                 _ => Color.black
             };
-            
+
             Color typeColor = cityType switch
             {
                 CityType.Consumer => Color.clear,

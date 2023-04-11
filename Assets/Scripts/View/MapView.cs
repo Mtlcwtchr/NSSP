@@ -15,6 +15,9 @@ namespace View
         private const float CityT = 5f;
         private float _dT1;
 
+        private const float GlobalStorageT = 10f;
+        private float _dT2;
+
         private void Awake()
         {
             StartCoroutine(CreateMap());
@@ -37,6 +40,12 @@ namespace View
                 {
                     city.Tick();
                 }
+            }
+
+            _dT2 += Time.deltaTime;
+            if (_dT2 >= GlobalStorageT)
+            {
+                _dT2 = 0;
             }
         }
 

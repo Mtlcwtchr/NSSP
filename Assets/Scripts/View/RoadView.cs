@@ -24,8 +24,14 @@ namespace View
                     _model = value;
                     _model.OnCapacityChanged += CapacityChanged;
                     _model.OnBlockStatusChanged += BlockStatusChanged;
+                    _model.OnAvailabilityStatusChanged += AvailabilityStatusChanged;
                 }
             }
+        }
+
+        private void AvailabilityStatusChanged(bool _)
+        {
+            UpdateColor();
         }
 
         private void BlockStatusChanged(bool isBlocked)

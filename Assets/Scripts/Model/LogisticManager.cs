@@ -102,7 +102,7 @@ namespace Model
 
             foreach (var supply in supplies)
             {
-                from.Storage.ConsumeSupplies(supply.Type, supply.Value);
+                from.TryConsumeSupplies(supply.Type, supply.Value, out _);
             }
 
             SupplyWagon wagon = new SupplyWagon(supplies, from, to);
@@ -126,7 +126,7 @@ namespace Model
 
             foreach (var supplies in wagon.Supplies)
             {
-                wagon.To.Storage.AddSupplies(supplies.Type, supplies);
+                wagon.To.AddSupplies(supplies.Type, supplies, out _);
             }
 
             wagon.Dispose();
@@ -139,9 +139,7 @@ namespace Model
 
         private bool CanProvideSupplies(City supplier, City consumer)
         {
-            return !supplier.Priority &&
-                   consumer.Priority &&
-                   supplier.IsAvailableForSupply();
+            return supplier.IsAvailableForSupply(consumer);
         }
 
         private bool CanSendWagonTo(City city)
@@ -202,7 +200,7 @@ namespace Model
             if (suppliers is not { Count: > 1 })
             {
                 City supplier = suppliers.FirstOrDefault();
-                if (supplier == null || !supplier.IsAvailableForSupply())
+                if (supplier == null || !supplier.IsAvailableForSupply(to))
                 {
                     return null;
                 }
@@ -214,7 +212,7 @@ namespace Model
             List<Road> shortestPath = null;
             foreach (var supplier in suppliers)
             {
-                if (supplier.IsAvailableForSupply())
+                if (supplier.IsAvailableForSupply(to))
                 {
                     var (isRouted, routes) = City.TryFindShortestPath(supplier, to);
                     if (isRouted &&

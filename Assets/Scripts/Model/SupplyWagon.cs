@@ -35,6 +35,7 @@ namespace Model
 
             _cachedPath = CalculatePath(from, to);
             _current = _cachedPath[0];
+            _current.OnBlockStatusChanged += RoadBlockStatusChanged;
             foreach (var road in _cachedPath)
             {
                 road.InvolveInDelivery(this);
@@ -50,13 +51,30 @@ namespace Model
         {
             if (city == _to)
             {
+                _current.OnBlockStatusChanged -= RoadBlockStatusChanged;
                 OnDestinationReached?.Invoke(this);
                 return;
             }
 
             if (city == _current.To)
             {
-                _current = _cachedPath[_cachedPath.IndexOf(_current) + 1];
+                _current.OnBlockStatusChanged -= RoadBlockStatusChanged;
+                Road nextRoad = _cachedPath[_cachedPath.IndexOf(_current) + 1];
+                if (!nextRoad.AvailableForSupply)
+                {
+                    _to = _current.To;
+                    OnDestinationReached?.Invoke(this);
+                }
+                _current = nextRoad;
+                _current.OnBlockStatusChanged += RoadBlockStatusChanged;
+            }
+        }
+        
+        private void RoadBlockStatusChanged(bool roadBlocked)
+        {
+            if(roadBlocked)
+            {
+                DestroyWagon();
             }
         }
 
@@ -67,6 +85,7 @@ namespace Model
 
         public void Dispose()
         {
+            _current.OnBlockStatusChanged -= RoadBlockStatusChanged;
             foreach (var road in _cachedPath)
             {
                 road.ExcludeFromDelivery(this);

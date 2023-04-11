@@ -6,6 +6,7 @@ namespace Model
 {
     public class Road
     {
+        public event Action<bool> OnAvailabilityStatusChanged;
         public event Action<bool> OnBlockStatusChanged;
         public event Action<float> OnCapacityChanged;
 
@@ -28,11 +29,11 @@ namespace Model
 
         public bool AddBlocker(string blockerId)
         {
-            Inversed?.AddBlocker(blockerId);
             _blockers ??= new List<string>();
             if(!_blockers.Contains(blockerId))
             {
                 _blockers.Add(blockerId);
+                Inversed?.AddBlocker(blockerId);
                 OnBlockStatusChanged?.Invoke(IsBlockedByAnyReason);
                 return true;
             }
@@ -42,7 +43,6 @@ namespace Model
 
         public bool ClearBlocker(string blockerId)
         {
-            Inversed?.ClearBlocker(blockerId);
             if (_blockers == null)
             {
                 return false;
@@ -50,6 +50,7 @@ namespace Model
             if (_blockers.Contains(blockerId))
             {
                 _blockers.Remove(blockerId);
+                Inversed?.ClearBlocker(blockerId);
                 OnBlockStatusChanged?.Invoke(IsBlockedByAnyReason);
                 return true;
             }
@@ -59,18 +60,17 @@ namespace Model
 
         public void InvolveInDelivery(SupplyWagon wagon)
         {
-            Inversed?.InvolveInDelivery(wagon);
             _wagons ??= new List<SupplyWagon>();
             if (!_wagons.Contains(wagon))
             {
                 _wagons.Add(wagon);
                 OnCapacityChanged?.Invoke(CapacityFactor);
+                Inversed?.InvolveInDelivery(wagon);
             }
         }
 
         public void ExcludeFromDelivery(SupplyWagon wagon)
         {
-            Inversed?.ExcludeFromDelivery(wagon);
             if (_wagons == null)
             {
                 return;
@@ -79,6 +79,7 @@ namespace Model
             {
                 _wagons.Remove(wagon);
                 OnCapacityChanged?.Invoke(CapacityFactor);
+                Inversed?.ExcludeFromDelivery(wagon);
             }
         }
 
@@ -87,6 +88,20 @@ namespace Model
             From = from;
             To = to;
             Distance = distance;
+
+            if (From != null)
+            {
+                From.OnWarSideChanged += WarSideChanged;
+            }
+            if (To != null)
+            {
+                To.OnWarSideChanged += WarSideChanged;
+            }
+        }
+
+        private void WarSideChanged(WarSide side)
+        {
+            OnAvailabilityStatusChanged?.Invoke(AvailableForSupply);
         }
 
         public override string ToString()

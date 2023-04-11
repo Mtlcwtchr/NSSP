@@ -37,6 +37,12 @@ namespace Model
             { SuppliesType.Ammo, 20 },
             { SuppliesType.Provision, 20 }
         };
+        
+        public Dictionary<SuppliesType, float> MinStorageCapacity { get; set; } = new()
+        {
+            { SuppliesType.Ammo, 5 },
+            { SuppliesType.Provision, 5 }
+        };
 
         private bool _priority;
 
@@ -61,8 +67,8 @@ namespace Model
 
         public void Tick()
         {
-            Storage.ConsumeSupplies(SuppliesType.Ammo, 5);
-            Storage.ConsumeSupplies(SuppliesType.Provision, 5);
+            TryConsumeSupplies(SuppliesType.Ammo, 5f, out  _);
+            TryConsumeSupplies(SuppliesType.Provision, 5f, out  _);
         }
 
         public Road AddRoad(City to, float distance)
@@ -76,6 +82,7 @@ namespace Model
                 if (!to.IsConnectedTo(this))
                 {
                     var inversed = to.AddRoad(this, distance);
+                    inversed.Inversed = road;
                     road.Inversed = inversed;
                 }
             }
@@ -88,20 +95,38 @@ namespace Model
             return Roads.Any(road => road.To == to);
         }
 
-        public bool IsAvailableForSupply()
+        public bool IsAvailableForSupply(City consumer)
         {
+            if (consumer == this)
+            {
+                return false;
+            }
+            
+            if (consumer.WarSide != WarSide)
+            {
+                return false;
+            }
+            
             if (CityType == CityType.Supplier)
             {
-                return true;
+                if (GlobalStorage.Instance.CanSendSupplies())
+                {
+                    return true;
+                }
+            }
+
+            if (!consumer.Priority && Priority)
+            {
+                return false;
             }
 
             var suppliesLeft = Storage.Supplies;
 
-            foreach (var supplies in StorageCapacity)
+            foreach (var supplies in MinStorageCapacity)
             {
                 if (suppliesLeft.TryGetValue(supplies.Key, out var value))
                 {
-                    if (value.Value >= supplies.Value)
+                    if (value.Value < supplies.Value)
                     {
                         return false;
                     }
@@ -113,11 +138,6 @@ namespace Model
 
         public bool IsSupplyRequired()
         {
-            if (CityType == CityType.Supplier)
-            {
-                return false;
-            }
-
             var suppliesLeft = Storage.Supplies;
 
             foreach (var supplies in StorageCapacity)
@@ -208,6 +228,30 @@ namespace Model
         public override string ToString()
         {
             return $"City: {WorldPosition}";
+        }
+
+        public bool TryConsumeSupplies(SuppliesType type, float value, out float diff)
+        {
+            float extra = value;
+            if (CityType == CityType.Supplier)
+            {
+                if (GlobalStorage.Instance.TryConsumeSupplies(type, value, out extra))
+                {
+                    diff = 0;
+                    return true;
+                }
+            }
+
+            diff = 0f;
+            Storage.ConsumeSupplies(type, extra);
+            return true;
+        }
+
+        public bool AddSupplies(SuppliesType type, ISupplies<float> value, out float diff)
+        {
+            diff = 0f;
+            Storage.AddSupplies(type, value);
+            return true;
         }
     }
 

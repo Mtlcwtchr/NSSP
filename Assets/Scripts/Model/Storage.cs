@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Model
 {
-    public class Storage<T>
+    public class Storage<T> where T : IComparable<T>
     {
         public event Action<SuppliesType, T> OnSuppliesUpdated;
 
