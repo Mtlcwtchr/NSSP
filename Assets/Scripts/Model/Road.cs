@@ -6,6 +6,7 @@ namespace Model
 {
     public class Road
     {
+        public event Action<bool> OnBlockStatusChanged;
         public event Action<float> OnCapacityChanged;
 
         public City From { get; private set; }
@@ -15,7 +16,8 @@ namespace Model
         public Road Inversed { get; set; }
 
         public float CapacityFactor => Mathf.Max(_wagons?.Count ?? 0, 1.0f) * 0.1f;
-        private List<SupplyWagon<float>> _wagons;
+
+        private List<SupplyWagon> _wagons;
 
         public bool AvailableForSupply => From.WarSide == To.WarSide &&
                                           !IsBlockedByAnyReason;
@@ -24,33 +26,41 @@ namespace Model
 
         public bool IsBlockedByAnyReason => _blockers?.Count > 0;
 
-        public void AddBlocker(string blockerId)
+        public bool AddBlocker(string blockerId)
         {
             Inversed?.AddBlocker(blockerId);
             _blockers ??= new List<string>();
             if(!_blockers.Contains(blockerId))
             {
                 _blockers.Add(blockerId);
+                OnBlockStatusChanged?.Invoke(IsBlockedByAnyReason);
+                return true;
             }
+
+            return false;
         }
 
-        public void ClearBlocker(string blockerId)
+        public bool ClearBlocker(string blockerId)
         {
             Inversed?.ClearBlocker(blockerId);
             if (_blockers == null)
             {
-                return;
+                return false;
             }
             if (_blockers.Contains(blockerId))
             {
                 _blockers.Remove(blockerId);
+                OnBlockStatusChanged?.Invoke(IsBlockedByAnyReason);
+                return true;
             }
+
+            return false;
         }
 
-        public void InvolveInDelivery(SupplyWagon<float> wagon)
+        public void InvolveInDelivery(SupplyWagon wagon)
         {
             Inversed?.InvolveInDelivery(wagon);
-            _wagons ??= new List<SupplyWagon<float>>();
+            _wagons ??= new List<SupplyWagon>();
             if (!_wagons.Contains(wagon))
             {
                 _wagons.Add(wagon);
@@ -58,7 +68,7 @@ namespace Model
             }
         }
 
-        public void ExcludeFromDelivery(SupplyWagon<float> wagon)
+        public void ExcludeFromDelivery(SupplyWagon wagon)
         {
             Inversed?.ExcludeFromDelivery(wagon);
             if (_wagons == null)

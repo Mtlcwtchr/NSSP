@@ -1,4 +1,6 @@
+using System.Linq;
 using Model;
+using TMPro;
 using UnityEngine;
 
 namespace View
@@ -7,11 +9,17 @@ namespace View
     {
         [SerializeField] private float velocity;
 
-        private SupplyWagon<float> _model;
+        [SerializeField] private TMP_Text ammoLabel;
+        [SerializeField] private TMP_Text provisionLabel;
 
-        public void AttachModel(SupplyWagon<float> model)
+        private SupplyWagon _model;
+
+        public void AttachModel(SupplyWagon model)
         {
             _model = model;
+
+            ammoLabel.text = $"ammo: {_model.Supplies.FirstOrDefault(sup => sup.Type == SuppliesType.Ammo)?.Value}";
+            provisionLabel.text = $"provision: {_model.Supplies.FirstOrDefault(sup => sup.Type == SuppliesType.Provision)?.Value}";
         }
 
         private void Update()

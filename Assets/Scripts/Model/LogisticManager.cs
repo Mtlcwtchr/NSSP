@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using View.Factory;
 
@@ -12,8 +13,8 @@ namespace Model
 
         private List<City> _cities;
         private List<City> _suppliers;
-        private Dictionary<City, List<SupplyWagon<float>>> _incomingWagons;
-        private Dictionary<City, List<SupplyWagon<float>>> _outgoingWagons;
+        private Dictionary<City, List<SupplyWagon>> _incomingWagons;
+        private Dictionary<City, List<SupplyWagon>> _outgoingWagons;
 
         public LogisticManager(List<City> cities, int maxWagonsIncoming, int maxWagonsOutgoing)
         {
@@ -32,16 +33,16 @@ namespace Model
             _maxWagonsIncoming = maxWagonsIncoming;
             _maxWagonsOutgoing = maxWagonsOutgoing;
 
-            _incomingWagons = new Dictionary<City, List<SupplyWagon<float>>>();
-            _outgoingWagons = new Dictionary<City, List<SupplyWagon<float>>>();
+            _incomingWagons = new Dictionary<City, List<SupplyWagon>>();
+            _outgoingWagons = new Dictionary<City, List<SupplyWagon>>();
             foreach (var city in _cities)
             {
-                _incomingWagons.Add(city, new List<SupplyWagon<float>>(_maxWagonsIncoming));
-                _outgoingWagons.Add(city, new List<SupplyWagon<float>>(_maxWagonsOutgoing));
+                _incomingWagons.Add(city, new List<SupplyWagon>(_maxWagonsIncoming));
+                _outgoingWagons.Add(city, new List<SupplyWagon>(_maxWagonsOutgoing));
             }
 
-            SupplyWagon<float>.OnDestinationReached += WagonDestinationReached;
-            SupplyWagon<float>.OnWagonDestroyed += WagonDestroyed;
+            SupplyWagon.OnDestinationReached += WagonDestinationReached;
+            SupplyWagon.OnWagonDestroyed += WagonDestroyed;
         }
 
         public void Tick()
@@ -83,33 +84,42 @@ namespace Model
                         }
                     }
 
-                    ChargeSupply(supplier, city, CreateDefaultAmmoSupplies(), CreateDefaultProvisionSupplies());
+                    if (TryCreateSuppliesForCity(city, out var supplies))
+                    {
+                        ChargeSupply(supplier, city, supplies.ToArray());
+                    }
                 }
             }
         }
 
         private void ChargeSupply(City from, City to, params ISupplies<float>[] supplies)
         {
+            var wagonCapacity = WagonCapacity;
+            foreach (var supply in supplies)
+            {
+                supply.Value = Mathf.Min(supply.Value, wagonCapacity[supply.Type].Value);
+            }
+
             foreach (var supply in supplies)
             {
                 from.Storage.ConsumeSupplies(supply.Type, supply.Value);
             }
 
-            SupplyWagon<float> wagon = new SupplyWagon<float>(supplies, from, to);
+            SupplyWagon wagon = new SupplyWagon(supplies, from, to);
             WagonsFactory.Instance.CreateWagon(wagon);
 
             _incomingWagons[to].Add(wagon);
             _outgoingWagons[from].Add(wagon);
         }
 
-        private void WagonDestroyed(SupplyWagon<float> wagon)
+        private void WagonDestroyed(SupplyWagon wagon)
         {
             _incomingWagons[wagon.To].Remove(wagon);
             _outgoingWagons[wagon.From].Remove(wagon);
             wagon.Dispose();
         }
 
-        private void WagonDestinationReached(SupplyWagon<float> wagon)
+        private void WagonDestinationReached(SupplyWagon wagon)
         {
             _incomingWagons[wagon.To].Remove(wagon);
             _outgoingWagons[wagon.From].Remove(wagon);
@@ -129,7 +139,9 @@ namespace Model
 
         private bool CanProvideSupplies(City supplier, City consumer)
         {
-            return supplier.Priority < consumer.Priority && supplier.IsAvailableForSupply();
+            return !supplier.Priority &&
+                   consumer.Priority &&
+                   supplier.IsAvailableForSupply();
         }
 
         private bool CanSendWagonTo(City city)
@@ -142,36 +154,85 @@ namespace Model
             return _outgoingWagons.TryGetValue(city, out var wagons) && wagons.Count < _maxWagonsOutgoing;
         }
 
-        private Ammo CreateDefaultAmmoSupplies()
+        private bool TryCreateSuppliesForCity(City city, out List<ISupplies<float>> supplies)
         {
-            return new Ammo(5);
+            supplies = new List<ISupplies<float>>();
+            Dictionary<SuppliesType,float> suppliesLack = city.GetLackSupplies();
+            Dictionary<SuppliesType, float> suppliesToSend = new Dictionary<SuppliesType, float>();
+            suppliesToSend.AddRange(suppliesLack);
+
+            List<SupplyWagon> incomingWagons = new List<SupplyWagon>();
+            incomingWagons.AddRange(_incomingWagons[city]);
+
+            foreach (var wagon in incomingWagons)
+            {
+                var sentSupplies = wagon.Supplies;
+                foreach (var supply in sentSupplies)
+                {
+                    if (suppliesToSend.ContainsKey(supply.Type))
+                    {
+                        suppliesToSend[supply.Type] -= supply.Value;
+                    }
+                }
+            }
+            
+            foreach (var (type, value) in suppliesToSend)
+            {
+                if (value > 0)
+                {
+                    supplies.Add(CreateSupplyOfType(type, value));
+                }
+            }
+
+            return supplies.Count > 0;
         }
 
-        private Provision CreateDefaultProvisionSupplies()
+        private ISupplies<float> CreateSupplyOfType(SuppliesType suppliesType, float value)
         {
-            return new Provision(5);
+            return suppliesType switch
+            {
+                SuppliesType.Ammo => new Ammo(value),
+                SuppliesType.Provision => new Provision(value),
+                _ => null
+            };
         }
 
         private City GetNearestSupplier(City to, List<City> suppliers)
         {
             if (suppliers is not { Count: > 1 })
             {
-                return suppliers.FirstOrDefault();
+                City supplier = suppliers.FirstOrDefault();
+                if (supplier == null || !supplier.IsAvailableForSupply())
+                {
+                    return null;
+                }
+                var (canBeRouted, _) = City.TryFindShortestPath(supplier, to);
+                return canBeRouted ? supplier : null;
             }
 
-            City sup = suppliers[0];
+            City sup = null;
             List<Road> shortestPath = null;
             foreach (var supplier in suppliers)
             {
-                var (isRouted, routes) = City.TryFindShortestPath(supplier, to);
-                if (isRouted && (shortestPath == null || routes.Count < shortestPath.Count))
+                if (supplier.IsAvailableForSupply())
                 {
-                    sup = supplier;
-                    shortestPath = routes;
+                    var (isRouted, routes) = City.TryFindShortestPath(supplier, to);
+                    if (isRouted &&
+                        (shortestPath == null || routes.Count < shortestPath.Count))
+                    {
+                        sup = supplier;
+                        shortestPath = routes;
+                    }
                 }
             }
 
             return sup;
         }
+
+        private Dictionary<SuppliesType, ISupplies<float>> _wagonCapacity;
+        private Dictionary<SuppliesType, ISupplies<float>> WagonCapacity => _wagonCapacity ??= new Dictionary<SuppliesType, ISupplies<float>>
+        {
+            { SuppliesType.Ammo, new Ammo(10)}, { SuppliesType.Provision, new Provision(10)}
+        };
     }
 }

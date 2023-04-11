@@ -7,10 +7,12 @@ namespace View
     {
         [SerializeField] private MeshFilter meshFilter;
         [SerializeField] private MeshRenderer meshRenderer;
+        [SerializeField] private MeshCollider meshCollider;
         [SerializeField] private Material material;
+        [SerializeField] private GameObject blockerObject;
 
         private Material _mat;
-        
+
         private Road _model;
         public Road Model
         {
@@ -21,8 +23,15 @@ namespace View
                 {
                     _model = value;
                     _model.OnCapacityChanged += CapacityChanged;
+                    _model.OnBlockStatusChanged += BlockStatusChanged;
                 }
             }
+        }
+
+        private void BlockStatusChanged(bool isBlocked)
+        {
+            blockerObject.gameObject.SetActive(isBlocked);
+            UpdateColor();
         }
 
         private void CapacityChanged(float value)
@@ -63,16 +72,12 @@ namespace View
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
-            meshFilter.mesh = mesh;
+            meshFilter.sharedMesh = mesh;
+            meshCollider.sharedMesh = mesh;
 
             _mat = Instantiate(material);
             meshRenderer.sharedMaterial = _mat;
-            _mat.SetColor("_Color", 
-                Model.AvailableForSupply ? 
-                    Model.From.WarSide == WarSide.Player ? 
-                        Color.green : 
-                        Color.red : 
-                    Color.gray);
+            UpdateColor();
             CapacityChanged(Model.CapacityFactor);
         }
         
@@ -100,6 +105,16 @@ namespace View
             triangles[4] = 2;
             triangles[5] = 3;
             return triangles;
+        }
+
+        private void UpdateColor()
+        {
+            _mat.SetColor("_Color", 
+                Model.AvailableForSupply ? 
+                    Model.From.WarSide == WarSide.Player ? 
+                        Color.green : 
+                        Color.red : 
+                    Color.gray);
         }
     }
 }

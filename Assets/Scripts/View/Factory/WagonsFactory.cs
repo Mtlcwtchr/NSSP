@@ -15,9 +15,9 @@ namespace View.Factory
             _instance = this;
         }
 
-        public SupplyWagonView CreateWagon(SupplyWagon<float> wagon)
+        public SupplyWagonView CreateWagon(SupplyWagon wagon)
         {
-            SupplyWagonView wagonView = Instantiate(prefab, wagon.From.WorldPosition, Quaternion.LookRotation(wagon.To.WorldPosition));
+            SupplyWagonView wagonView = Instantiate(prefab, wagon.From.WorldPosition, Quaternion.identity);
             wagon.AttachView(wagonView);
             wagonView.AttachModel(wagon);
             return wagonView;

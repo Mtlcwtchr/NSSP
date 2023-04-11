@@ -25,6 +25,9 @@ namespace View
                 if (value != _model)
                 {
                     _model = value;
+                    _model.OnWarSideChanged += WarSideChanged;
+                    WarSideChanged(_model.WarSide);
+
                     switch (_model.CityType)
                     {
                         case CityType.Consumer:
@@ -45,8 +48,20 @@ namespace View
             }
         }
 
-        private void PriorityChanged(float prior)
+        private void WarSideChanged(WarSide side)
         {
+            SetColor(side switch {
+                WarSide.Player => Color.blue,
+                WarSide.Enemy => Color.red,
+                _ => Color.black
+            });
+
+            UpdateColor(_model.WarSide, _model.CityType, _model.Priority);
+        }
+
+        private void PriorityChanged(bool prior)
+        {
+            UpdateColor(_model.WarSide, _model.CityType, _model.Priority);
             priorityLabel.text = $"priority: {prior}";
         }
 
@@ -73,6 +88,27 @@ namespace View
         {
             _model.OnPriorityChanged -= PriorityChanged;
             _model.Storage.OnSuppliesUpdated -= SuppliesUpdated;
+        }
+
+        public void UpdateColor(WarSide warSide, CityType cityType, bool isPrior)
+        {
+            Color mainColor = warSide switch
+            {
+                WarSide.Player => Color.blue,
+                WarSide.Enemy => Color.red,
+                _ => Color.black
+            };
+            
+            Color typeColor = cityType switch
+            {
+                CityType.Consumer => Color.clear,
+                CityType.Supplier => Color.green,
+                _ => Color.black
+            };
+
+            Color priorColor = isPrior ? Color.yellow : Color.clear;
+            
+            SetColor(Color.Lerp(mainColor, Color.Lerp(typeColor, priorColor, 0.5f), 0.5f));
         }
 
         public void SetColor(Color color)

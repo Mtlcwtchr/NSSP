@@ -35,8 +35,7 @@ namespace Model
             c2.AddRoad(c3, GetDist(c2, c3));
             c3.AddRoad(c4, GetDist(c3, c4));
             c4.AddRoad(c5, GetDist(c4, c5));
-            var road= c5.AddRoad(c6, GetDist(c5, c6));
-            road.AddBlocker("enemy");
+            c5.AddRoad(c6, GetDist(c5, c6));
             c6.AddRoad(c1, GetDist(c6, c1));
 
             c4.AddRoad(c7, GetDist(c4, c7));

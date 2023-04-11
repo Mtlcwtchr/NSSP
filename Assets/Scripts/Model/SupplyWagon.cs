@@ -4,12 +4,12 @@ using View;
 
 namespace Model
 {
-    public class SupplyWagon<T>
+    public class SupplyWagon
     {
-        public static event Action<SupplyWagon<T>> OnDestinationReached;
-        public static event Action<SupplyWagon<T>> OnWagonDestroyed;
+        public static event Action<SupplyWagon> OnDestinationReached;
+        public static event Action<SupplyWagon> OnWagonDestroyed;
 
-        private ISupplies<T>[] _supplies;
+        private ISupplies<float>[] _supplies;
 
         private City _from;
         private City _to;
@@ -24,9 +24,9 @@ namespace Model
         public City From => _from;
         public City To => _to;
 
-        public ISupplies<T>[] Supplies => _supplies;
+        public ISupplies<float>[] Supplies => _supplies;
 
-        public SupplyWagon(ISupplies<T>[] supplies, City from, City to)
+        public SupplyWagon(ISupplies<float>[] supplies, City from, City to)
         {
             _supplies = supplies;
 
@@ -37,7 +37,7 @@ namespace Model
             _current = _cachedPath[0];
             foreach (var road in _cachedPath)
             {
-                road.InvolveInDelivery(this as SupplyWagon<float>);
+                road.InvolveInDelivery(this);
             }
         }
 
@@ -69,7 +69,7 @@ namespace Model
         {
             foreach (var road in _cachedPath)
             {
-                road.ExcludeFromDelivery(this as SupplyWagon<float>);
+                road.ExcludeFromDelivery(this);
             }
             _view.Dispose();
         }

@@ -1,9 +1,11 @@
+using UnityEngine;
+
 namespace Model
 {
     public interface ISupplies<T>
     {
         SuppliesType Type { get; }
-        T Value { get; }
+        T Value { get; set; }
 
         void Add(ISupplies<T> supplies);
         void Consume(T value);
@@ -33,7 +35,7 @@ namespace Model
 
         public override void Consume(float value)
         {
-            Value -= value;
+            Value = Mathf.Max(Value - value, 0f);
         }
     }
 
@@ -53,7 +55,7 @@ namespace Model
 
         public override void Consume(float value)
         {
-            Value -= value;
+            Value = Mathf.Max(Value - value, 0f);
         }
     }
 

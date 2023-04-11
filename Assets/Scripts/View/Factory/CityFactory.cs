@@ -20,12 +20,6 @@ namespace View.Factory
         {
             CityView view = Instantiate(prefab, city.WorldPosition, Quaternion.identity, null);
             view.Model = city;
-            view.SetColor(city.WarSide switch
-            {
-                WarSide.Player => Color.blue,
-                WarSide.Enemy => Color.red,
-                _ => Color.black
-            } );
             return view;
         }
     }

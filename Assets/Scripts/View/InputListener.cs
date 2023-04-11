@@ -14,12 +14,23 @@ namespace View
                 {
                     if (hit.collider.TryGetComponent<CityView>(out var cityView))
                     {
-                        cityView.Model.Priority = ++cityView.Model.Priority % 10;
+                        if (cityView.Model.WarSide == WarSide.Player)
+                        {
+                            cityView.Model.Priority = !cityView.Model.Priority;
+                        }
                     }
 
                     if (hit.collider.TryGetComponent<SupplyWagonView>(out var wagonView))
                     {
                         wagonView.DestroyWagon();
+                    }
+
+                    if (hit.collider.TryGetComponent<RoadView>(out var roadView))
+                    {
+                        if (!roadView.Model.AddBlocker("enemy"))
+                        {
+                            roadView.Model.ClearBlocker("enemy");
+                        }
                     }
                 }
             }
@@ -31,8 +42,7 @@ namespace View
                 {
                     if (hit.collider.TryGetComponent<CityView>(out var cityView))
                     {
-                        cityView.Model.Storage.ConsumeSupplies(SuppliesType.Ammo, 5);
-                        cityView.Model.Storage.ConsumeSupplies(SuppliesType.Provision, 5);
+                        cityView.Model.WarSide = (cityView.Model.WarSide == WarSide.Player ? WarSide.Enemy : WarSide.Player);
                     }
                 }
             }

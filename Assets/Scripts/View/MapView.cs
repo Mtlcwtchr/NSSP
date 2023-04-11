@@ -12,6 +12,9 @@ namespace View
         private const float T = 2f;
         private float _dT;
 
+        private const float CityT = 5f;
+        private float _dT1;
+
         private void Awake()
         {
             StartCoroutine(CreateMap());
@@ -24,6 +27,16 @@ namespace View
             {
                 _dT = 0;
                 _mapData.LogisticManager.Tick();
+            }
+
+            _dT1 += Time.deltaTime;
+            if (_dT1 >= CityT)
+            {
+                _dT1 = 0;
+                foreach (var city in _mapData.Cities)
+                {
+                    city.Tick();
+                }
             }
         }
 

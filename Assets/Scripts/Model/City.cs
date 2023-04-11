@@ -7,22 +7,40 @@ namespace Model
 {
     public class City
     {
-        public event Action<float> OnPriorityChanged;
-        
-        public CityType CityType { get; }
-        public Vector3 WorldPosition { get; private set; }
-        public WarSide WarSide { get; private set; }
-        public List<Road> Roads { get; private set; }
-        
-        public Storage<float> Storage { get; private set; }
+        public event Action<bool> OnPriorityChanged;
+        public event Action<WarSide> OnWarSideChanged;
 
-        public List<ISupplies<float>> MinSupplies = new List<ISupplies<float>>()
+        public CityType CityType { get; }
+
+        private WarSide _warSide;
+
+        public WarSide WarSide
         {
-            new Provision(5), new Ammo(5)
+            get => _warSide;
+            set
+            {
+                if (_warSide != value)
+                {
+                    _warSide = value;
+                    OnWarSideChanged?.Invoke(_warSide);
+                }
+            }
+        }
+
+        public Vector3 WorldPosition { get; private set; }
+        public List<Road> Roads { get; private set; }
+
+        public Storage<float> Storage { get; private set; }
+        
+        public Dictionary<SuppliesType, float> StorageCapacity { get; set; } = new()
+        {
+            { SuppliesType.Ammo, 20 },
+            { SuppliesType.Provision, 20 }
         };
 
-        private float _priority;
-        public float Priority
+        private bool _priority;
+
+        public bool Priority
         {
             get => _priority;
             set
@@ -41,6 +59,12 @@ namespace Model
             Roads = new List<Road>();
         }
 
+        public void Tick()
+        {
+            Storage.ConsumeSupplies(SuppliesType.Ammo, 5);
+            Storage.ConsumeSupplies(SuppliesType.Provision, 5);
+        }
+
         public Road AddRoad(City to, float distance)
         {
             Road road = null;
@@ -48,7 +72,7 @@ namespace Model
             {
                 road = new Road(this, to, distance);
                 Roads.Add(road);
-                
+
                 if (!to.IsConnectedTo(this))
                 {
                     var inversed = to.AddRoad(this, distance);
@@ -63,29 +87,27 @@ namespace Model
         {
             return Roads.Any(road => road.To == to);
         }
-        
+
         public bool IsAvailableForSupply()
         {
             if (CityType == CityType.Supplier)
             {
                 return true;
             }
-            
+
             var suppliesLeft = Storage.Supplies;
 
-            foreach (var supplies in MinSupplies)
+            foreach (var supplies in StorageCapacity)
             {
-                if (suppliesLeft.TryGetValue(supplies.Type, out var value))
+                if (suppliesLeft.TryGetValue(supplies.Key, out var value))
                 {
-                    if (value.Value < supplies.Value * 2)
+                    if (value.Value >= supplies.Value)
                     {
-                        Debug.Log($"{this} is not available for supply, {supplies.Type}={value.Value} less than {supplies.Value * 2}");
                         return false;
                     }
                 }
             }
-            
-            Debug.Log($"{this} is available for supply");
+
             return true;
         }
 
@@ -95,12 +117,12 @@ namespace Model
             {
                 return false;
             }
-            
+
             var suppliesLeft = Storage.Supplies;
 
-            foreach (var supplies in MinSupplies)
+            foreach (var supplies in StorageCapacity)
             {
-                if (suppliesLeft.TryGetValue(supplies.Type, out var value))
+                if (suppliesLeft.TryGetValue(supplies.Key, out var value))
                 {
                     if (value.Value < supplies.Value)
                     {
@@ -112,8 +134,30 @@ namespace Model
             return false;
         }
 
+        public Dictionary<SuppliesType, float> GetLackSupplies()
+        {
+            Dictionary<SuppliesType, float> supplies = new Dictionary<SuppliesType, float>();
+
+            var suppliesLeft = Storage.Supplies;
+            foreach (var sup in StorageCapacity)
+            {
+                if (suppliesLeft.TryGetValue(sup.Key, out var value))
+                {
+                    float supplyLack = sup.Value - value.Value;
+                    supplies.Add(sup.Key, supplyLack);
+                }
+            }
+
+            return supplies;
+        }
+
         public static (bool, List<Road>) TryFindShortestPath(City from, City to)
         {
+            if (from == null || to == null)
+            {
+                return (false, null);
+            }
+
             return from.TryFindShortestPath(to, new List<Road>());
         }
 
